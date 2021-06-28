@@ -11,7 +11,11 @@ class LinkJourney extends Model
 
     protected $table = 'link_journey';
 
-    protected $fillable = ['link_url', 'link_type', 'customer_id'];
+    protected $fillable = [
+        'link_url',
+        'link_type',
+        'customer_id',
+    ];
 
     /**
      * @param $customer_id
@@ -34,5 +38,47 @@ class LinkJourney extends Model
             ->get();
 
         return $customersWithSameCntJourneysAllLinks;
+    }
+
+    /**
+     * @param $page
+     * @param $start_time
+     * @param $end_time
+     *
+     * @return mixed
+     */
+    public static function getCounterPageByTimeInterval($page, $start_time, $end_time)
+    {
+        return self::where('link_type', $page)
+            ->where('created_at', '>=', $start_time)
+            ->where('created_at', '<=', $end_time)
+            ->count();
+    }
+
+    /**
+     * @param $search_url
+     * @param $start_time
+     * @param $end_time
+     *
+     * @return mixed
+     */
+    public static function getCounterUrlByTimeInterval($search_url, $start_time, $end_time)
+    {
+        return self::where('link_url', $search_url)
+            ->where('created_at', '>=', $start_time)
+            ->where('created_at', '<=', $end_time)
+            ->count();
+    }
+
+    /**
+     * @param $customer_id
+     *
+     * @return mixed
+     */
+    public static function getCustomerJourney($customer_id)
+    {
+        return self::where('customer_id', $customer_id)
+            ->orderBy('created_at')
+            ->pluck('link_url');
     }
 }

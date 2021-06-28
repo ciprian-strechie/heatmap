@@ -36,12 +36,11 @@ class LinkJourneyController extends Controller
             return $this->errorResponse('Invalid parameters provided!', $validator->errors());
         }
 
-        $counter = LinkJourney::where('link_type', $page)
-            ->where('created_at', '>=', $start_time)
-            ->where('created_at', '<=', $end_time)
-            ->count();
+        $start_time = self::cleanDate($start_time);
+        $end_time = self::cleanDate($end_time);
+        $counter = LinkJourney::getCounterPageByTimeInterval($page, $start_time, $end_time);
 
-        return $this->successResponse(['count' => $counter], 201);
+        return $this->successResponse(['count' => $counter], 200);
     }
 
     /**
@@ -64,10 +63,9 @@ class LinkJourneyController extends Controller
             return $this->errorResponse('Invalid parameters provided!', $validator->errors());
         }
 
-        $counter = LinkJourney::where('link_url', $search_url)
-            ->where('created_at', '>=', $start_time)
-            ->where('created_at', '<=', $end_time)
-            ->count();
+        $start_time = self::cleanDate($start_time);
+        $end_time = self::cleanDate($end_time);
+        $counter = LinkJourney::getCounterUrlByTimeInterval($search_url, $start_time, $end_time);
 
         return $this->successResponse(['count' => $counter], 201);
     }
@@ -88,11 +86,9 @@ class LinkJourneyController extends Controller
             return $this->errorResponse('Invalid parameters provided!', $validator->errors());
         }
 
-        $customerJourney = LinkJourney::where('customer_id', $customer_id)
-            ->orderBy('created_at')
-            ->pluck('link_url');
+        $customerJourney = LinkJourney::getCustomerJourney($customer_id);
 
-        return $this->successResponse($customerJourney, 201);
+        return $this->successResponse($customerJourney, 200);
     }
 
     /**
@@ -111,10 +107,7 @@ class LinkJourneyController extends Controller
             return $this->errorResponse('Invalid parameters provided!', $validator->errors());
         }
 
-        $currentCustomerJourney = LinkJourney::where('customer_id', $customer_id)
-            ->orderBy('created_at')
-            ->pluck('link_url')
-            ->toArray();
+        $currentCustomerJourney = LinkJourney::getCustomerJourney($customer_id);
 
         $customerSameJourneyAllLinks = LinkJourney::getCustomersWithSameCntJourneysAllLinks($customer_id, count($currentCustomerJourney));
 
@@ -200,5 +193,10 @@ class LinkJourneyController extends Controller
         return response()->json($returnData, $httpStatus);
 
         return $returnData;
+    }
+
+    private static function cleanDate($time)
+    {
+        return str_replace('T', ' ', $time);;
     }
 }
