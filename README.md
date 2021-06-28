@@ -19,3 +19,4 @@
 
 - Provide a list of  other customers that had the same journey: http://your-server-ip/api/link_journeys/customers_same_journey/2
 
+- Unit tests (not finalized): docker-compose exec app php ./vendor/bin/phpunit
