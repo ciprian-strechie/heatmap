@@ -1,0 +1,204 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\LinkJourney;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+class LinkJourneyController extends Controller
+{
+    public function index()
+    {
+        return LinkJourney::all();
+    }
+
+    /**
+     * @param $page
+     * @param $start_time
+     * @param $end_time
+     *
+     * @return array|\Illuminate\Http\JsonResponse
+     */
+    public function counterPageByTimeInterval($page, $start_time, $end_time)
+    {
+        $validator = \Validator::make(compact('page', 'start_time', 'end_time'), [
+            'page'       => [
+                'required',
+                Rule::in(\Config::get('custom.link_categories')),
+            ],
+            'start_time' => 'required|date_format:Y-m-d\TH:i',
+            'end_time'   => 'required|date_format:Y-m-d\TH:i',
+        ]);
+
+        if ($validator->fails())
+        {
+            return $this->errorResponse('Invalid parameters provided!', $validator->errors());
+        }
+
+        $counter = LinkJourney::where('link_type', $page)
+            ->where('created_at', '>=', $start_time)
+            ->where('created_at', '<=', $end_time)
+            ->count();
+
+        return $this->successResponse(['count' => $counter], 201);
+    }
+
+    /**
+     * @param $search_url
+     * @param $start_time
+     * @param $end_time
+     *
+     * @return array|\Illuminate\Http\JsonResponse
+     */
+    public function counterUrlByTimeInterval($start_time, $end_time, $search_url)
+    {
+        $validator = \Validator::make(compact('search_url', 'start_time', 'end_time'), [
+            'search_url' => 'url',
+            'start_time' => 'required|date_format:Y-m-d\TH:i',
+            'end_time'   => 'required|date_format:Y-m-d\TH:i',
+        ]);
+
+        if ($validator->fails())
+        {
+            return $this->errorResponse('Invalid parameters provided!', $validator->errors());
+        }
+
+        $counter = LinkJourney::where('link_url', $search_url)
+            ->where('created_at', '>=', $start_time)
+            ->where('created_at', '<=', $end_time)
+            ->count();
+
+        return $this->successResponse(['count' => $counter], 201);
+    }
+
+    /**
+     * @param $customer_id
+     *
+     * @return array|\Illuminate\Http\JsonResponse
+     */
+    public function customerJourney($customer_id)
+    {
+        $validator = \Validator::make(compact('customer_id'), [
+            'customer_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails())
+        {
+            return $this->errorResponse('Invalid parameters provided!', $validator->errors());
+        }
+
+        $customerJourney = LinkJourney::where('customer_id', $customer_id)
+            ->orderBy('created_at')
+            ->pluck('link_url');
+
+        return $this->successResponse($customerJourney, 201);
+    }
+
+    /**
+     * @param $customer_id
+     *
+     * @return array|\Illuminate\Http\JsonResponse
+     */
+    public function customersSameJourney($customer_id)
+    {
+        $validator = \Validator::make(compact('customer_id'), [
+            'customer_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails())
+        {
+            return $this->errorResponse('Invalid parameters provided!', $validator->errors());
+        }
+
+        $currentCustomerJourney = LinkJourney::where('customer_id', $customer_id)
+            ->orderBy('created_at')
+            ->pluck('link_url')
+            ->toArray();
+
+        $customerSameJourneyAllLinks = LinkJourney::getCustomersWithSameCntJourneysAllLinks($customer_id, count($currentCustomerJourney));
+
+        $customerSameJourney = [];
+        $customersLinkUrls   = [];
+        foreach ($customerSameJourneyAllLinks as $customer)
+        {
+            $customersLinkUrls[$customer->customer_id][] = $customer->link_url;
+        }
+
+        foreach ($customersLinkUrls as $customer_id => $customer)
+        {
+            if (empty(array_diff($customer, $currentCustomerJourney)))
+            {
+                $customerSameJourney[] = $customer_id;
+            }
+        }
+
+        return $this->successResponse($customerSameJourney, 201);
+    }
+
+    /**
+     * @param Request $request
+     *
+     * @return array|\Illuminate\Http\JsonResponse
+     */
+    public function store(Request $request)
+    {
+        $validator = \Validator::make($request->all(), [
+            'link_url'    => 'required|url|max:255',
+            'link_type'   => [
+                'required',
+                Rule::in(\Config::get('custom.link_categories')),
+            ],
+            'customer_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails())
+        {
+
+            return $this->errorResponse('Invalid parameters provided!', $validator->errors());
+        }
+
+        $linkJourney = LinkJourney::create($request->all());
+
+        return $this->successResponse($linkJourney, 201);
+    }
+
+    /**
+     * @param       $message
+     * @param array $errors
+     * @param int   $httpStatus
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    private function errorResponse($message, $errors = [], $httpStatus = 400)
+    {
+        $returnData = [
+            'status'  => false,
+            'message' => $message,
+            'errors'  => $errors,
+        ];
+
+        return response()->json($returnData, $httpStatus);
+    }
+
+    /**
+     * @param        $resource
+     * @param int    $httpStatus
+     * @param string $message
+     *
+     * @return array|\Illuminate\Http\JsonResponse
+     */
+    private function successResponse($resource, $httpStatus = 200, $message = '')
+    {
+        $returnData = [
+            'status'   => true,
+            'message'  => $message,
+            'errors'   => [],
+            'resource' => $resource,
+        ];
+
+        return response()->json($returnData, $httpStatus);
+
+        return $returnData;
+    }
+}
