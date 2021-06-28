@@ -16,7 +16,7 @@ class CreateLinkJourneyTable extends Migration
         Schema::create('link_journey', function (Blueprint $table) {
             $table->id();
             $table->string('link_url');
-            $table->enum('link_type', ['product', 'category', 'static-page', 'checkout', 'homepage']);
+            $table->enum('link_type', \Config::get('custom.link_categories'));
             $table->integer('customer_id', false,true);
             $table->timestamps();
         });
